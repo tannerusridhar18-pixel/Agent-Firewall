@@ -1,0 +1,11 @@
+package io.intentguard.gateway.repository;
+import com.fasterxml.jackson.core.JsonProcessingException; import com.fasterxml.jackson.databind.ObjectMapper; import io.intentguard.gateway.model.Task; import org.springframework.jdbc.core.JdbcTemplate; import org.springframework.stereotype.Repository; import java.sql.Timestamp; import java.time.Instant; import java.util.List; import java.util.UUID;
+@Repository public class TaskRepository {
+ private final JdbcTemplate jdbc; private final ObjectMapper mapper;
+ public TaskRepository(JdbcTemplate jdbc,ObjectMapper mapper){this.jdbc=jdbc;this.mapper=mapper;}
+ public Task create(String actor,String objective,List<String> tools,List<String> resources,List<String> forbidden,Instant expires){String id="T-"+UUID.randomUUID();Instant now=Instant.now();jdbc.update("INSERT INTO tasks(id,actor_id,objective,allowed_tools,allowed_resources,forbidden_actions,status,expires_at,created_at) VALUES (?,?,?,?,?,?, 'ACTIVE',?,?)",id,actor,objective,json(tools),json(resources),json(forbidden),Timestamp.from(expires),Timestamp.from(now));return find(id);}
+ public Task find(String id){return jdbc.queryForObject("SELECT * FROM tasks WHERE id=?",(r,n)->new Task(r.getString("id"),r.getString("actor_id"),r.getString("objective"),list(r.getString("allowed_tools")),list(r.getString("allowed_resources")),list(r.getString("forbidden_actions")),r.getString("status"),r.getTimestamp("expires_at").toInstant(),r.getTimestamp("created_at").toInstant()),id);}
+ public List<Task> findAll(){return jdbc.query("SELECT * FROM tasks ORDER BY created_at DESC",(r,n)->new Task(r.getString("id"),r.getString("actor_id"),r.getString("objective"),list(r.getString("allowed_tools")),list(r.getString("allowed_resources")),list(r.getString("forbidden_actions")),r.getString("status"),r.getTimestamp("expires_at").toInstant(),r.getTimestamp("created_at").toInstant()));}
+ private String json(Object v){try{return mapper.writeValueAsString(v);}catch(JsonProcessingException e){throw new IllegalArgumentException("Invalid task contract",e);}}
+ private List<String> list(String v){try{return mapper.readValue(v,mapper.getTypeFactory().constructCollectionType(List.class,String.class));}catch(Exception e){return List.of();}}
+}

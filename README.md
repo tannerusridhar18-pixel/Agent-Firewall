@@ -1,44 +1,52 @@
 # IntentGuard / AgentFirewall
 
-IntentGuard is a runtime security enforcement gateway for AI agents.
+**MCP-first, provenance-aware, capability-based authorization gateway for autonomous AI agents.**
 
-It sits between an AI agent and protected tools/APIs and makes the final authorization decision for consequential tool calls. The enforcement path is deterministic: task scope, tool capability, provenance, policy and runtime security context are evaluated before execution.
+This repository follows the **IntentGuard / AgentFirewall Official Document Set v2.2**. The documents are the source of truth for architecture, security invariants, technology, version order, and release gates.
 
-## Core security invariants
+## Canonical architecture
 
-- The gateway is the enforcement boundary.
-- The LLM is advisory only and can only make a decision stricter.
-- Capabilities are narrow, task-scoped and time-limited.
-- Sensitive arguments require acceptable provenance.
-- Unknown/lost provenance fails closed.
-- DENY means the protected tool is not executed.
-- Dashboard/observability components cannot bypass gateway authorization.
-- Security decisions are auditable without logging raw secrets.
+```
+IDE / AI Agent
+      |
+   MCP Client
+      |
+IntentGuard MCP Gateway
+      |
+Protected MCP Server / Tool
+      |
+   Resource
+```
+
+The dashboard communicates with IntentGuard Core through REST. It is never an enforcement point.
 
 ## Technology baseline
 
-- Backend / gateway: Java 21 + Spring Boot
-- Database: MySQL 8.x
-- Frontend: Next.js + React + Tailwind CSS
-- API: REST/JSON
-- Build: Maven Wrapper
-- Testing: JUnit/Spring tests + frontend tests + security/evaluation fixtures
+- Java 21 + Spring Boot
+- Maven Wrapper
+- MySQL 8.x + Flyway
+- Next.js + React + Tailwind CSS
+- MCP-first integration
+- Deterministic Java policy engine
+- JUnit/Spring Boot tests
+- Docker Compose
 
-## Repository layout
+## V0.1 foundation
 
-```text
-backend/       Spring Boot enforcement service
-frontend/      Next.js dashboard
-contracts/     machine-readable security contracts
-docs/          implementation and architecture notes
-infra/         local infrastructure configuration
-tests/         cross-component security/evaluation fixtures
-```
+V0.1 is intentionally limited to a runnable core:
+- Spring Boot application
+- MySQL/Flyway schema foundation
+- task/session/activity data model
+- deterministic policy skeleton
+- replayable deterministic simulator
+- audit model
+- Next.js dashboard shell
+- CI baseline
 
-## Development rule
+**MCP enforcement is V0.2.** V0.1 must not pretend to provide protected downstream execution.
 
-Implementation follows the finalized IntentGuard documentation baseline. Security invariants are not weakened for convenience. Each major capability is implemented incrementally, tested, security-verified, and only then advanced.
+## Security rule
 
-## Status
+The agent is not the final security authority. The gateway is. Any advisory model can only make a deterministic result stricter; it can never turn a deterministic DENY into ALLOW.
 
-Repository foundation initialized. V0.1 implementation starts from this baseline.
+Never claim protection that has not been implemented and measured.
