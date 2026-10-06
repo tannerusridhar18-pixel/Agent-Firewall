@@ -45,6 +45,22 @@ class McpGatewayServiceTest {
     }
 
     @Test
+    void missingSessionNeverExecutesProtectedTool() throws Exception {
+        CounterTool tool = new CounterTool();
+        McpToolRegistry registry = mock(McpToolRegistry.class);
+
+        var result = service(tool, registry).call(
+                null, "read_file",
+                mapper.readTree("""
+                    {"target":"workspace/src/Auth.java"}
+                    """));
+
+        assertTrue(result.protocolError());
+        assertEquals(0, tool.count);
+        verifyNoInteractions(registry);
+    }
+
+    @Test
     void denyNeverExecutesProtectedTool() throws Exception {
         CounterTool tool = new CounterTool();
         McpToolRegistry registry = mock(McpToolRegistry.class);
