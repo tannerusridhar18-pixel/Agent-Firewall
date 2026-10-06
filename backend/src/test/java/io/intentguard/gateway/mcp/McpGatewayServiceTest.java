@@ -37,7 +37,7 @@ class McpGatewayServiceTest {
                 Instant.now(), null, Instant.now()));
         when(tasks.find("T-1")).thenReturn(task());
         when(activity.append(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
-                .thenReturn(new ActivityEvent("E-1", "S-1", "T-1", "TOOL_CALL", "MCP_GATEWAY", "read_file", "workspace/src/Auth.java", "ALLOW", "ALLOW", java.time.Instant.now()));
+                .thenReturn(new ActivityEvent("E-1", "S-1", "T-1", "TOOL_CALL", "MCP_GATEWAY", "read_file", "workspace/src/Auth.java", "ALLOW", "TOOL", "ALLOW", java.time.Instant.now()));
 
         return new McpGatewayService(
                 sessions, tasks, activity, registry,
