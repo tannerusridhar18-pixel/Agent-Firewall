@@ -45,8 +45,8 @@ public class McpGatewayService {
             return CallResult.protocolError(-32001, "MCP session is required");
         }
 
-        final var session;
-        final Task task;
+        io.intentguard.gateway.model.AgentSession session;
+        Task task;
         try {
             session = sessions.find(sessionId);
             task = tasks.find(session.taskId());
