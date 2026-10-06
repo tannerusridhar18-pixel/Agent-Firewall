@@ -37,7 +37,7 @@ class McpGatewayControllerTest {
                 List.of("delete"), "ACTIVE",
                 Instant.now().plusSeconds(3600), Instant.now()));
         when(activity.append(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
-                .thenReturn(new io.intentguard.gateway.model.ActivityEvent("E-1", "S-1", "T-1", "TOOL_CALL", "MCP_GATEWAY", "read_file", "secrets/passwords.txt", "DENY", "DENY", java.time.Instant.now()));
+                .thenReturn(new io.intentguard.gateway.model.ActivityEvent("E-1", "S-1", "T-1", "TOOL_CALL", "MCP_GATEWAY", "read_file", "secrets/passwords.txt", "DENY", "TOOL", "DENY", java.time.Instant.now()));
         when(registry.findEnabled("read_file")).thenReturn(Optional.of(
                 new ToolManifest("read_file", "demo-protected-server", "Read", "{}", true)));
 
