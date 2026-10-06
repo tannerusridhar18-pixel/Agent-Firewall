@@ -1,50 +1,29 @@
-# IntentGuard Implementation Baseline — v2.2
+# IntentGuard V0.1 Implementation Baseline
 
-This repository follows the official MCP-first document set v2.2.
+Source of truth: IntentGuard_Official_Document_Set_MCP_v2.2.zip.
 
-## V0.1
+## Required V0.1 scope
 
-V0.1 establishes the runnable core, data model, dashboard shell, deterministic simulator, policy skeleton and audit foundation.
+V0.1 must provide:
+- Spring Boot + Java 21 modular-monolith foundation
+- MySQL 8.x with deterministic Flyway migrations
+- task/session/activity data model
+- deterministic policy engine skeleton
+- deterministic simulator and mock tool execution
+- basic dashboard that can create/view a task and session and display activity
+- health/readiness endpoints
+- reproducible backend/frontend test baseline
+- CI
 
-Implemented:
-- Java 21 + Spring Boot modular-monolith base
-- MySQL 8.x + Flyway
-- Task/session/activity schema
-- deterministic policy interface and safe default behavior
-- simulator endpoint for reproducible activity decisions
-- audit/activity domain records
-- Next.js + React + Tailwind shell
-- Docker Compose local MySQL
-- CI baseline
+## Explicitly deferred
 
-Not implemented yet:
-- MCP request forwarding
-- protected MCP server/tool execution
-- task-scoped capability issuance
-- provenance enforcement
-- risk/approval/quarantine enforcement
-- attack evaluation metrics
-- real IDE/agent integration
+Real protected MCP forwarding is V0.2.
+Real MCP-capable IDE/agent integration is after the gateway is stable.
+Task-scoped capability enforcement, provenance, risk, approval and quarantine are later roadmap stages.
 
-## V0.2
+## Security invariants
 
-The next gate is the MCP Gateway:
-- MCP server/tool registration
-- Tool Manifest
-- authenticated session binding
-- protected demo tools
-- hard ALLOW/DENY forwarding
-- DENY-before-execution proof
-- direct downstream bypass rejection
-
-## V0.3+
-
-Follow the canonical roadmap for capability, provenance, alignment, risk, approval, quarantine, attack evaluation, real MCP-agent integration, dashboard expansion and hardening.
-
-## Security invariant
-
-The gateway remains authoritative. Dashboard controls never authorize tools directly. Protected downstream credentials must remain gateway/server-side in the supported deployment.
-
-## Honesty rule
-
-No universal prompt-injection detection, universal agent compatibility, hidden-reasoning visibility, or whole-system monitoring claim is allowed. Metrics are reported only from actual reproducible tests.
+The simulator may execute only its own mock tool. It must never be described as downstream MCP enforcement.
+The dashboard is not an enforcement boundary.
+No external LLM is required for V0.1.
+No universal visibility or prompt-injection-detection claim is permitted.
