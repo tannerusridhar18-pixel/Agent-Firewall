@@ -1,0 +1,22 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: intentguard-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: intentguard
+      MYSQL_USER: intentguard
+      MYSQL_PASSWORD: intentguard
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - intentguard_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  intentguard_mysql_data:
