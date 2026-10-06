@@ -1,7 +1,6 @@
 package io.intentguard.gateway.audit;
 
 import java.time.Instant;
-
 import io.intentguard.gateway.common.Decision;
 
 public record AuditRecord(
