@@ -1,16 +1,8 @@
 package io.intentguard.gateway.policy;
 
 import io.intentguard.gateway.common.Decision;
+import io.intentguard.gateway.model.Task;
 
 public interface PolicyEngine {
-
-    Decision evaluate(PolicyInput input);
-
-    record PolicyInput(
-            String taskId,
-            String sessionId,
-            String tool,
-            boolean registered,
-            boolean inTaskScope
-    ) {}
+    Decision evaluate(Task task, String tool, String target);
 }
