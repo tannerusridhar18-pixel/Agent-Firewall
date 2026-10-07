@@ -8,7 +8,7 @@ import io.intentguard.gateway.common.Decision;
 import io.intentguard.gateway.model.Task;
 import io.intentguard.gateway.policy.PolicyEngine;
 import io.intentguard.gateway.repository.ActivityRepository;
-import io.intentguard.gateway.repository.McpToolRegistry;
+import io.intentguard.gateway.mcp.McpToolRegistry;
 import io.intentguard.gateway.repository.SessionRepository;
 import io.intentguard.gateway.repository.TaskRepository;
 import org.springframework.dao.EmptyResultDataAccessException;
