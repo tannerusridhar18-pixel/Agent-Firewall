@@ -1,11 +1,14 @@
 spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
+
   application:
     name: intentguard-gateway
 
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/intentguard?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${DB_USERNAME:intentguard}
-    password: ${DB_PASSWORD:intentguard}
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   flyway:
