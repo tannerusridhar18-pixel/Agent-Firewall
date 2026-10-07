@@ -211,6 +211,24 @@ class McpGatewayControllerTest {
         verifyNoInteractions(registry);
     }
 
+    @Test
+    void toolsCallWithRotatedOldCapabilityIsDeniedAndNeverExecutesTool() throws Exception {
+        when(capabilities.validate(eq("old-rotated-token"), eq("T-1"), eq("read_file"), eq("workspace/src/Auth.java")))
+                .thenReturn(CapabilityDecision.deny("CAPABILITY_REVOKED"));
+
+        mvc.perform(post("/mcp")
+                .header("Mcp-Session-Id", "S-1")
+                .header("X-IntentGuard-Capability", "old-rotated-token")
+                .contentType("application/json")
+                .content("{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"tools/call\",\"params\":{\"name\":\"read_file\",\"arguments\":{\"target\":\"workspace/src/Auth.java\"}}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.isError").value(true))
+                .andExpect(jsonPath("$.result.content[0].text").value(containsString("CAPABILITY_REVOKED")));
+
+        assertEquals(0, protectedTool.count);
+        verifyNoInteractions(registry);
+    }
+
     static class CounterTool implements ProtectedTool {
         int count;
         public String name() { return "read_file"; }

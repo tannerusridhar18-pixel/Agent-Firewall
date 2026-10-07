@@ -242,6 +242,22 @@ class McpGatewayServiceTest {
         assertEquals(0, tool.count);
     }
 
+    @Test
+    void rotatedOldTokenIsDeniedAndNeverExecutesProtectedTool() throws Exception {
+        when(capabilities.validate("old-token-after-rotation", "T-1", "read_file", "workspace/src/Auth.java"))
+                .thenReturn(CapabilityDecision.deny("CAPABILITY_REVOKED"));
+
+        var result = gateway.call("S-1", "old-token-after-rotation", "read_file",
+                mapper.readTree("{\"target\":\"workspace/src/Auth.java\"}"));
+
+        assertTrue(result.toolError());
+        assertEquals("REQUEST_DENIED", result.content().get("reason").asText());
+        assertEquals("CAPABILITY_REVOKED", result.content().get("decision").asText());
+        assertEquals(0, tool.count);
+        verifyNoInteractions(registry);
+        verifyNoInteractions(policy);
+    }
+
     static class CounterTool implements ProtectedTool {
         int count;
         public String name() { return "read_file"; }

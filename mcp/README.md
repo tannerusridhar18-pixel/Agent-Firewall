@@ -52,7 +52,14 @@ Endpoint: `POST http://localhost:8080/mcp`
 
 See [`mcp-client-config.example.json`](./mcp-client-config.example.json) for standard MCP client configuration.
 
-### Control-Plane Requirement (Capability Issuance)
+### Control-Plane API (Capability Issuance & Rotation)
 
-In accordance with security principles, the gateway does **not** expose an unauthenticated or insecure capability-issuance API. Capabilities are issued via the internal `CapabilityService`. Exposing an external issuance API requires an authenticated and authorized control plane (e.g., operator console / IAM-authenticated control-plane service) in the next iteration.
+Capability lifecycle operations are exposed via the authenticated control plane at `/api/v1/control-plane/capabilities`:
+- Authentication: requires `X-IntentGuard-Operator-Key` and `X-Operator-Id` headers.
+- Issuance: `POST /api/v1/control-plane/capabilities` validates task, tool, scope, and TTL server-side before minting a random capability token.
+- Rotation: `POST /api/v1/control-plane/capabilities/{id}/rotate` immediately revokes the old capability in the database and returns a replacement token.
+- Revocation: `POST /api/v1/control-plane/capabilities/{id}/revoke` invalidates capabilities to prevent further tool access.
+- Security Invariant: The raw capability token is returned only once at creation/rotation time and is never stored in plaintext (only SHA-256 hashes are persisted).
+
+See [`docs/V0.3_CAPABILITIES.md`](../docs/V0.3_CAPABILITIES.md) for full endpoint specifications.
 

@@ -48,6 +48,46 @@ public class CapabilityRepository {
         return rows.stream().findFirst();
     }
 
+    public Optional<Capability> findById(String capabilityId) {
+        var rows = jdbc.query("""
+                SELECT capability_id, task_id, tool_name, resource_scope, token_hash,
+                       status, issued_at, expires_at, revoked_at
+                FROM capabilities
+                WHERE capability_id = ?
+                """, (r, n) -> new Capability(
+                r.getString("capability_id"),
+                r.getString("task_id"),
+                r.getString("tool_name"),
+                r.getString("resource_scope"),
+                r.getString("token_hash"),
+                r.getString("status"),
+                r.getTimestamp("issued_at").toInstant(),
+                r.getTimestamp("expires_at").toInstant(),
+                r.getTimestamp("revoked_at") == null ? null : r.getTimestamp("revoked_at").toInstant()
+        ), capabilityId);
+        return rows.stream().findFirst();
+    }
+
+    public java.util.List<Capability> findByTaskId(String taskId) {
+        return jdbc.query("""
+                SELECT capability_id, task_id, tool_name, resource_scope, token_hash,
+                       status, issued_at, expires_at, revoked_at
+                FROM capabilities
+                WHERE task_id = ?
+                ORDER BY issued_at DESC
+                """, (r, n) -> new Capability(
+                r.getString("capability_id"),
+                r.getString("task_id"),
+                r.getString("tool_name"),
+                r.getString("resource_scope"),
+                r.getString("token_hash"),
+                r.getString("status"),
+                r.getTimestamp("issued_at").toInstant(),
+                r.getTimestamp("expires_at").toInstant(),
+                r.getTimestamp("revoked_at") == null ? null : r.getTimestamp("revoked_at").toInstant()
+        ), taskId);
+    }
+
     public void revoke(String capabilityId, Instant revokedAt) {
         jdbc.update("""
                 UPDATE capabilities
