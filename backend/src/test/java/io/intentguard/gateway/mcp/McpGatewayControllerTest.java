@@ -48,10 +48,10 @@ class McpGatewayControllerTest {
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new McpGatewayController(gateway, registry)).build();
 
         String body = mvc.perform(post("/mcp").header("Mcp-Session-Id","S-1").header("X-IntentGuard-Capability","cap-token")
-                .contentType("application/json").content("{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"read_file","arguments":{"target":"workspace/src/Auth.java"}}}"))
+                .contentType("application/json").content("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"read_file\",\"arguments\":{\"target\":\"workspace/src/Auth.java\"}}}"))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
-        assertTrue(body.contains(""isError":false"));
+        assertTrue(body.contains("\"isError\":false"));
         assertEquals(1, protectedTool.count);
     }
 
@@ -75,7 +75,7 @@ class McpGatewayControllerTest {
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new McpGatewayController(gateway, registry)).build();
 
         mvc.perform(post("/mcp").header("Mcp-Session-Id","S-1").header("X-IntentGuard-Capability","cap-token")
-                .contentType("application/json").content("{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"read_file","arguments":{"target":"secrets/passwords.txt"}}}"))
+                .contentType("application/json").content("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"read_file\",\"arguments\":{\"target\":\"secrets/passwords.txt\"}}}"))
                 .andExpect(status().isOk());
 
         assertEquals(0, protectedTool.count);
