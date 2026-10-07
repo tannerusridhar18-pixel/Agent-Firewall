@@ -83,7 +83,9 @@ public class McpGatewayService {
 
     private void record(String sessionId, String taskId, String tool, String target, Decision decision, String reason) {
         var event = activity.append(sessionId, taskId, tool, target == null ? "" : target, decision.name(), "MCP_GATEWAY", reason);
-        sessions.touch(sessionId, event.timestamp());
+        if (event != null) {
+            sessions.touch(sessionId, event.timestamp());
+        }
     }
 
     public record CallResult(boolean protocolError, int errorCode, String errorMessage, boolean toolError, JsonNode content) {
