@@ -25,6 +25,10 @@ management:
 server:
   port: 8080
 
+intentguard:
+  control-plane:
+    api-key: ${INTENTGUARD_CONTROL_PLANE_API_KEY:intentguard-control-plane-secret-key}
+
 logging:
   level:
     io.intentguard: INFO
