@@ -1,22 +1,21 @@
 services:
-  # Optional local MySQL for development.
-  # The backend can instead connect directly to any MySQL instance
-  # configured through backend/.env.
+  # Local MySQL for AgentFirewall development.
+  # Data is persisted in a named Docker volume.
   mysql:
     image: mysql:8.4
     container_name: agentfirewall-mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-agentfirewall}
-      MYSQL_USER: ${MYSQL_USER:-agentfirewall}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-agentfirewall}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: agentfirewall
+      MYSQL_USER: agentfirewall
+      MYSQL_PASSWORD: agentfirewall
+      MYSQL_ROOT_PASSWORD: root
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      - "3306:3306"
     volumes:
       - agentfirewall_mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot --silent"]
       interval: 5s
       timeout: 5s
       retries: 20
