@@ -45,7 +45,7 @@ class McpGatewayServiceTest {
         CounterTool tool = new CounterTool();
         McpToolRegistry registry = mock(McpToolRegistry.class);
         var result = service(tool, registry).call(null, "cap-token", "read_file",
-                mapper.readTree("{"target":"workspace/src/Auth.java"}"));
+                mapper.readTree("{\"target\":\"workspace/src/Auth.java\"}"));
         assertTrue(result.protocolError());
         assertEquals(0, tool.count);
         verifyNoInteractions(registry);
@@ -58,7 +58,7 @@ class McpGatewayServiceTest {
         when(registry.findEnabled("read_file")).thenReturn(Optional.of(
                 new ToolManifest("read_file", "demo-protected-server", "Read", "{}", true)));
         var result = service(tool, registry).call("S-1", "cap-token", "read_file",
-                mapper.readTree("{"target":"secrets/passwords.txt"}"));
+                mapper.readTree("{\"target\":\"secrets/passwords.txt\"}"));
         assertTrue(result.toolError());
         assertEquals(0, tool.count);
     }
@@ -70,7 +70,7 @@ class McpGatewayServiceTest {
         when(registry.findEnabled("read_file")).thenReturn(Optional.of(
                 new ToolManifest("read_file", "demo-protected-server", "Read", "{}", true)));
         var result = service(tool, registry).call("S-1", "cap-token", "read_file",
-                mapper.readTree("{"target":"workspace/src/Auth.java"}"));
+                mapper.readTree("{\"target\":\"workspace/src/Auth.java\"}"));
         assertFalse(result.protocolError());
         assertFalse(result.toolError());
         assertEquals(1, tool.count);
@@ -82,7 +82,7 @@ class McpGatewayServiceTest {
         McpToolRegistry registry = mock(McpToolRegistry.class);
         when(registry.findEnabled("unknown")).thenReturn(Optional.empty());
         var result = service(tool, registry).call("S-1", "cap-token", "unknown",
-                mapper.readTree("{"target":"workspace/src/Auth.java"}"));
+                mapper.readTree("{\"target\":\"workspace/src/Auth.java\"}"));
         assertTrue(result.protocolError());
         assertEquals(0, tool.count);
     }
@@ -105,7 +105,7 @@ class McpGatewayServiceTest {
         var gateway = new McpGatewayService(sessions, tasks, activity, registry,
                 new DefaultPolicyEngine(), capabilities, List.of(tool));
         var result = gateway.call("S-1", "cap-token", "read_file",
-                mapper.readTree("{"target":"secrets/passwords.txt"}"));
+                mapper.readTree("{\"target\":\"secrets/passwords.txt\"}"));
         assertTrue(result.toolError());
         assertEquals(0, tool.count);
         verifyNoInteractions(registry);
