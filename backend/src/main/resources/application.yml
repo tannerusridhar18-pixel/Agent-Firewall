@@ -1,14 +1,11 @@
 spring:
-  config:
-    import: optional:file:.env[.properties],optional:file:../.env[.properties]
-
   application:
     name: intentguard-gateway
 
   datasource:
-    url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: jdbc:mysql://localhost:3306/agentfirewall?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: agentfirewall
+    password: agentfirewall
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   flyway:
@@ -26,7 +23,7 @@ management:
         enabled: true
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: 8080
 
 logging:
   level:
