@@ -1,22 +1,25 @@
 services:
+  # Optional local MySQL for development.
+  # The backend can instead connect directly to any MySQL instance
+  # configured through backend/.env.
   mysql:
     image: mysql:8.4
-    container_name: intentguard-mysql
+    container_name: agentfirewall-mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: intentguard
-      MYSQL_USER: intentguard
-      MYSQL_PASSWORD: intentguard
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-agentfirewall}
+      MYSQL_USER: ${MYSQL_USER:-agentfirewall}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-agentfirewall}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT:-3306}:3306"
     volumes:
-      - intentguard_mysql_data:/var/lib/mysql
+      - agentfirewall_mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 5s
       timeout: 5s
       retries: 20
 
 volumes:
-  intentguard_mysql_data:
+  agentfirewall_mysql_data:
