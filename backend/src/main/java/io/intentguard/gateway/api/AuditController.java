@@ -47,6 +47,14 @@ public class AuditController {
         return ResponseEntity.ok(auditService.listSecurityEvents(limit));
     }
 
+    @GetMapping("/security-summary")
+    public ResponseEntity<AuditService.SecuritySummary> getSummary(
+            @RequestHeader(value = "X-IntentGuard-Operator-Key", required = false) String operatorKey,
+            @RequestHeader(value = "X-Operator-Id", required = false) String operatorId) {
+        authenticate(operatorKey, operatorId);
+        return ResponseEntity.ok(auditService.getSecuritySummary());
+    }
+
     private void authenticate(String operatorKey, String operatorId) {
         if (operatorKey == null || operatorKey.isBlank() ||
                 !MessageDigest.isEqual(operatorKey.getBytes(StandardCharsets.UTF_8), configuredOperatorKey.getBytes(StandardCharsets.UTF_8))) {

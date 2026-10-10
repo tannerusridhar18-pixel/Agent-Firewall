@@ -11,6 +11,7 @@ import io.intentguard.gateway.capability.CapabilityService;
 import io.intentguard.gateway.common.ArgumentHasher;
 import io.intentguard.gateway.common.Decision;
 import io.intentguard.gateway.model.AgentSession;
+import io.intentguard.gateway.model.ActivityEvent;
 import io.intentguard.gateway.model.Task;
 import io.intentguard.gateway.policy.PolicyEngine;
 import io.intentguard.gateway.policy.PolicyEvaluationResult;
@@ -23,6 +24,9 @@ import io.intentguard.gateway.repository.TaskRepository;
 import io.intentguard.gateway.risk.RiskEvaluator;
 import io.intentguard.gateway.risk.RiskLevel;
 import io.intentguard.gateway.risk.RiskSnapshot;
+import io.intentguard.gateway.agent.SecurityAgentService;
+import io.intentguard.gateway.agent.SecurityAnalysisResult;
+import io.intentguard.gateway.agent.SecurityDecisionType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
@@ -49,6 +53,7 @@ public class McpGatewayService {
     private final ApprovalService approvals;
     private final QuarantineService quarantineService;
     private final AuditService audit;
+    private final SecurityAgentService securityAgent;
     private final Map<String, ProtectedTool> tools;
 
     @Autowired
@@ -57,7 +62,8 @@ public class McpGatewayService {
                              CapabilityService capabilities,
                              ProvenanceService provenance, RiskEvaluator riskEvaluator,
                              ApprovalService approvals, QuarantineService quarantineService,
-                             AuditService audit, List<ProtectedTool> tools) {
+                             AuditService audit, SecurityAgentService securityAgent,
+                             List<ProtectedTool> tools) {
         this.sessions = sessions;
         this.tasks = tasks;
         this.activity = activity;
@@ -69,13 +75,23 @@ public class McpGatewayService {
         this.approvals = approvals;
         this.quarantineService = quarantineService;
         this.audit = audit;
+        this.securityAgent = securityAgent;
         this.tools = tools == null ? Collections.emptyMap() : tools.stream().collect(Collectors.toMap(ProtectedTool::name, Function.identity()));
     }
 
     public McpGatewayService(SessionRepository sessions, TaskRepository tasks, ActivityRepository activity,
                              McpToolRegistry registry, PolicyEngine policy,
+                             CapabilityService capabilities,
+                             ProvenanceService provenance, RiskEvaluator riskEvaluator,
+                             ApprovalService approvals, QuarantineService quarantineService,
+                             AuditService audit, List<ProtectedTool> tools) {
+        this(sessions, tasks, activity, registry, policy, capabilities, provenance, riskEvaluator, approvals, quarantineService, audit, null, tools);
+    }
+
+    public McpGatewayService(SessionRepository sessions, TaskRepository tasks, ActivityRepository activity,
+                             McpToolRegistry registry, PolicyEngine policy,
                              CapabilityService capabilities, List<ProtectedTool> tools) {
-        this(sessions, tasks, activity, registry, policy, capabilities, null, null, null, null, null, tools);
+        this(sessions, tasks, activity, registry, policy, capabilities, null, null, null, null, null, null, tools);
     }
 
     public CallResult call(String sessionId, String capabilityToken, String toolName, JsonNode arguments) {
@@ -151,11 +167,44 @@ public class McpGatewayService {
             return CallResult.toolError("REQUEST_DENIED", reason);
         }
 
+        // Security / Intent Analysis (Step 5)
+        SecurityAnalysisResult securityAnalysis = securityAgent != null
+                ? securityAgent.analyze(task, manifest, toolName, target, arguments, provRes)
+                : SecurityAnalysisResult.allow("Security agent not configured", "DEFAULT");
+
+        if (securityAnalysis.decision() == SecurityDecisionType.BLOCK) {
+            String blockReason = "SECURITY_AGENT_BLOCK: " + securityAnalysis.threatCategory() + " - " + securityAnalysis.reason();
+            recordEvidence(requestId, sessionId, task.id(), toolName, argumentsHash, provenanceRefs,
+                    Decision.DENY, List.of(securityAnalysis.threatCategory(), "SECURITY_AGENT_BLOCK"),
+                    "CRITICAL", List.of("THREAT_DETECTED", securityAnalysis.threatCategory()),
+                    null, false, target, blockReason);
+            if (audit != null) {
+                audit.recordSecurityEvent(sessionId, task.id(), "CRITICAL", "THREAT_BLOCKED", requestId,
+                        "Request blocked by security agent: " + securityAnalysis.reason(),
+                        "{\"threatCategory\":\"" + securityAnalysis.threatCategory() + "\",\"riskScore\":" + securityAnalysis.riskScore() + "}");
+            }
+            checkRepeatedDenials(sessionId, task.id(), requestId);
+            return CallResult.toolError("REQUEST_DENIED", blockReason);
+        }
+
         // Gate 5: Policy & Risk Evaluation
         int recentDenials = audit != null ? audit.countRecentHardDenials(sessionId, 5) : 0;
         RiskSnapshot risk = riskEvaluator != null
                 ? riskEvaluator.evaluate(task, manifest, target, provRes, recentDenials)
                 : new RiskSnapshot(RiskLevel.LOW, Collections.emptyList());
+
+        if (securityAnalysis.decision() == SecurityDecisionType.FLAG) {
+            List<String> escalatedFactors = new ArrayList<>(risk.factors());
+            escalatedFactors.add("SECURITY_AGENT_FLAG");
+            escalatedFactors.add(securityAnalysis.threatCategory());
+            RiskLevel escalatedLevel = securityAnalysis.riskScore() >= 0.75 ? RiskLevel.CRITICAL : RiskLevel.HIGH;
+            risk = new RiskSnapshot(escalatedLevel, escalatedFactors);
+            if (audit != null) {
+                audit.recordSecurityEvent(sessionId, task.id(), "HIGH", "THREAT_FLAGGED", requestId,
+                        "Request flagged by security agent: " + securityAnalysis.reason(),
+                        "{\"threatCategory\":\"" + securityAnalysis.threatCategory() + "\",\"riskScore\":" + securityAnalysis.riskScore() + "}");
+            }
+        }
 
         PolicyEvaluationResult policyDecision = policy.evaluate(task, manifest, target, provRes, risk);
         if (policyDecision == null) {
@@ -183,7 +232,7 @@ public class McpGatewayService {
             if (approvalRequestId == null || approvalRequestId.isBlank()) {
                 // Must pause execution and return REQUIRE_APPROVAL
                 Approval pending = approvals != null
-                        ? approvals.createPending(sessionId, task.id(), toolName, argumentsHash, null)
+                        ? approvals.createPending(requestId, sessionId, task.id(), toolName, argumentsHash, null)
                         : null;
                 String pendingReqId = pending != null ? pending.requestId() : requestId;
                 String approvalId = pending != null ? pending.approvalId() : null;
@@ -210,19 +259,50 @@ public class McpGatewayService {
         }
 
         // Gate 7: Fail-Closed Audit & Evidence Persistence
-        recordEvidence(requestId, sessionId, task.id(), toolName, argumentsHash, provenanceRefs,
+        ActivityEvent activityEvent = recordEvidence(requestId, sessionId, task.id(), toolName, argumentsHash, provenanceRefs,
                 Decision.ALLOW, List.of("ALLOW"), risk.level().name(), risk.factors(),
                 consumedApprovalId, true, target, "ALLOW");
+
+        if (audit != null) {
+            String eventType = consumedApprovalId != null ? "APPROVED_EXECUTION" : "ALLOW_VERIFIED";
+            String reasonText = consumedApprovalId != null ? "Execution approved by operator" : "Execution permitted by security agent";
+            audit.recordSecurityEvent(
+                    sessionId,
+                    task.id(),
+                    "LOW",
+                    eventType,
+                    requestId,
+                    reasonText + ": " + toolName,
+                    String.format("{\"threatCategory\":\"%s\",\"riskScore\":%.2f,\"analysisSource\":\"%s\",\"decision\":\"ALLOW\",\"executed\":true}",
+                            securityAnalysis.threatCategory(),
+                            securityAnalysis.riskScore(),
+                            securityAnalysis.analysisSource())
+            );
+        }
 
         // Gate 8: Protected Tool Execution
         ProtectedTool tool = tools.get(toolName);
         if (tool == null) {
+            if (activityEvent != null) {
+                activity.updateExecutionStatus(activityEvent.eventId(), "FAILED");
+            }
             return CallResult.protocolError(-32003, "Registered tool has no protected handler");
         }
-        return CallResult.success(tool.execute(arguments));
+        try {
+            CallResult result = CallResult.success(tool.execute(arguments));
+            if (activityEvent != null) {
+                activity.updateExecutionStatus(activityEvent.eventId(), "EXECUTED");
+            }
+            return result;
+        } catch (RuntimeException ex) {
+            if (activityEvent != null) {
+                activity.updateExecutionStatus(activityEvent.eventId(), "FAILED");
+            }
+            throw ex;
+        }
     }
 
-    private void recordEvidence(String requestId, String sessionId, String taskId, String toolName,
+    private ActivityEvent recordEvidence(String requestId, String sessionId, String taskId, String toolName,
                                 String argumentsHash, List<String> provenanceRefs,
                                 Decision decision, List<String> reasonCodes, String riskLevel,
                                 List<String> riskFactors, String approvalId, boolean executed,
@@ -253,11 +333,14 @@ public class McpGatewayService {
         // Record activity event
         if (activity != null) {
             var event = activity.append(sessionId, taskId, toolName, target == null ? "" : target,
-                    decision.name(), "MCP_GATEWAY", activityReason, "MCP_GATEWAY");
+                    decision.name(), "MCP_GATEWAY", activityReason, "MCP_GATEWAY", riskLevel,
+                    executed ? "AUTHORIZED" : decision.name());
             if (event != null && sessions != null) {
                 sessions.touch(sessionId, event.timestamp());
             }
+            return event;
         }
+        return null;
     }
 
     private void checkRepeatedDenials(String sessionId, String taskId, String requestId) {

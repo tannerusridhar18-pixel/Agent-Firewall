@@ -15,14 +15,24 @@ import java.util.Map;
 public class McpGatewayController {
     private final McpGatewayService gateway;
     private final McpToolRegistry registry;
+    private final UniversalMcpBridgeService bridge;
 
     public McpGatewayController(McpGatewayService gateway, McpToolRegistry registry) {
+        this(gateway, registry, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public McpGatewayController(McpGatewayService gateway, McpToolRegistry registry, UniversalMcpBridgeService bridge) {
         this.gateway = gateway;
         this.registry = registry;
+        this.bridge = bridge;
     }
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> handle(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestHeader(value = "X-API-Key", required = false) String apiKeyHeader,
+            @RequestHeader(value = "X-Client-Id", required = false) String clientIdHeader,
             @RequestHeader(value = "Mcp-Session-Id", required = false) String sessionId,
             @RequestHeader(value = "Mcp-Protocol-Version", required = false) String protocolVersion,
             @RequestHeader(value = "X-IntentGuard-Capability", required = false) String capabilityToken,
@@ -31,9 +41,16 @@ public class McpGatewayController {
         Object id = request.has("id") ? request.get("id") : null;
         String method = request.path("method").asText();
 
+        if ("notifications/initialized".equals(method)) {
+            return ResponseEntity.ok(Map.of());
+        }
+
         if ("initialize".equals(method)) {
+            if ((authHeader != null || apiKeyHeader != null) && bridge != null && !bridge.authenticate(authHeader, apiKeyHeader)) {
+                return ResponseEntity.ok(error(id, -32001, "Unauthorized: Invalid or missing API key"));
+            }
             return ResponseEntity.ok(response(id, Map.of(
-                    "protocolVersion", protocolVersion == null ? "2026-07-28" : protocolVersion,
+                    "protocolVersion", protocolVersion == null ? "2024-11-05" : protocolVersion,
                     "capabilities", Map.of("tools", Map.of()),
                     "serverInfo", Map.of("name", "intentguard-mcp-gateway", "version", "0.3.0")
             )));
@@ -44,6 +61,9 @@ public class McpGatewayController {
         }
 
         if ("tools/list".equals(method)) {
+            if ((authHeader != null || apiKeyHeader != null) && bridge != null && !bridge.authenticate(authHeader, apiKeyHeader)) {
+                return ResponseEntity.ok(error(id, -32001, "Unauthorized: Invalid or missing API key"));
+            }
             var tools = registry.listEnabled().stream().map(t -> Map.of(
                     "name", t.toolName(),
                     "description", t.description(),
@@ -70,7 +90,38 @@ public class McpGatewayController {
                 }
             }
 
-            var result = gateway.call(sessionId, capabilityToken, approvalRequestId, name, args, provenanceRefs);
+            String explicitApprovalId = approvalRequestId;
+            if (explicitApprovalId == null || explicitApprovalId.isBlank()) {
+                if (p.has("approvalRequestId")) {
+                    explicitApprovalId = p.get("approvalRequestId").asText();
+                } else if (args != null && args.has("approvalRequestId")) {
+                    explicitApprovalId = args.get("approvalRequestId").asText();
+                } else if (args != null && args.has("_intentguard_approval")) {
+                    explicitApprovalId = args.get("_intentguard_approval").asText();
+                }
+            }
+
+            McpGatewayService.CallResult result;
+
+            boolean isLegacyHeaderClient = (sessionId != null && !sessionId.isBlank() && authHeader == null && apiKeyHeader == null)
+                    || (capabilityToken != null && !capabilityToken.isBlank());
+
+            if (isLegacyHeaderClient || bridge == null) {
+                result = gateway.call(sessionId, capabilityToken, explicitApprovalId, name, args, provenanceRefs);
+            } else {
+                String clientIdentity = clientIdHeader;
+                if (clientIdentity == null || clientIdentity.isBlank()) {
+                    JsonNode clientInfo = p.path("clientInfo");
+                    if (!clientInfo.isMissingNode() && clientInfo.has("name")) {
+                        clientIdentity = clientInfo.get("name").asText();
+                    }
+                }
+                if (clientIdentity == null || clientIdentity.isBlank()) {
+                    clientIdentity = "github-copilot";
+                }
+                result = bridge.call(authHeader, apiKeyHeader, sessionId, explicitApprovalId, clientIdentity, name, args, provenanceRefs);
+            }
+
             if (result.protocolError()) {
                 return ResponseEntity.ok(error(id, result.errorCode(), result.errorMessage()));
             }
