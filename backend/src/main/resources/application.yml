@@ -28,6 +28,21 @@ server:
 intentguard:
   control-plane:
     api-key: ${INTENTGUARD_CONTROL_PLANE_API_KEY:intentguard-control-plane-secret-key}
+  mcp:
+    api-key: ${INTENTGUARD_MCP_API_KEY:intentguard-mcp-client-secret-key}
+  security-agent:
+    enabled: ${INTENTGUARD_SECURITY_AGENT_ENABLED:true}
+    block-threshold: ${INTENTGUARD_RISK_BLOCK_THRESHOLD:0.80}
+    flag-threshold: ${INTENTGUARD_RISK_FLAG_THRESHOLD:0.40}
+    ai:
+      enabled: ${INTENTGUARD_AI_ENABLED:true}
+      provider: ${INTENTGUARD_AI_PROVIDER:openai}
+      api-key: ${INTENTGUARD_AI_API_KEY:}
+      endpoint: ${INTENTGUARD_AI_ENDPOINT:https://api.openai.com/v1/chat/completions}
+      model: ${INTENTGUARD_AI_MODEL:gpt-4o-mini}
+      timeout-ms: ${INTENTGUARD_AI_TIMEOUT_MS:3000}
+      temperature: ${INTENTGUARD_AI_TEMPERATURE:0.0}
+      max-tokens: ${INTENTGUARD_AI_MAX_TOKENS:150}
 
 logging:
   level:

@@ -17,14 +17,19 @@ public class ApprovalService {
     }
 
     public Approval createPending(String sessionId, String taskId, String toolName, String argumentsHash, Duration ttl) {
+        return createPending(null, sessionId, taskId, toolName, argumentsHash, ttl);
+    }
+
+    public Approval createPending(String requestId, String sessionId, String taskId, String toolName, String argumentsHash, Duration ttl) {
         if (ttl == null || ttl.isZero() || ttl.isNegative()) {
             ttl = DEFAULT_TTL;
         }
 
         Instant now = Instant.now();
+        String reqId = (requestId != null && !requestId.isBlank()) ? requestId : "REQ-" + UUID.randomUUID();
         Approval approval = new Approval(
                 "APP-" + UUID.randomUUID(),
-                "REQ-" + UUID.randomUUID(),
+                reqId,
                 sessionId,
                 taskId,
                 toolName,
@@ -80,6 +85,10 @@ public class ApprovalService {
 
     public Optional<Approval> findByRequestId(String requestId) {
         return repository.findByRequestId(requestId);
+    }
+
+    public Optional<Approval> findLatestApproved(String sessionId, String toolName, String argumentsHash) {
+        return repository.findLatestApproved(sessionId, toolName, argumentsHash);
     }
 
     public ApprovalResult validateAndConsume(String requestId, String sessionId, String taskId, String toolName, String argumentsHash) {

@@ -1,0 +1,3 @@
+ALTER TABLE activity_events
+    ADD COLUMN risk_level VARCHAR(32) NOT NULL DEFAULT 'UNKNOWN',
+    ADD COLUMN execution_status VARCHAR(32) NOT NULL DEFAULT 'RECORDED';

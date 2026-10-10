@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "my-mcp-server-1400d528": {
+      "url": "http://localhost:3000/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${env:intentguard-mcp-client-secret-key}"
+      }
+    }
+  }
+}

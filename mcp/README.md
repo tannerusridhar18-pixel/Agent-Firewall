@@ -48,6 +48,8 @@ Endpoint: `POST http://localhost:8080/mcp`
 3. **Policy Evaluation**: Evaluates deterministic task policies against task constraints.
 4. **Execution**: If and only if all gates pass, dispatches execution to the protected tool handler.
 
+The universal bridge also persists capability-issuance and resource-scope denials as `DENY` activity and security-decision records before returning the MCP error. Denied requests never look up or execute the protected tool.
+
 ### MCP Client Configuration
 
 See [`mcp-client-config.example.json`](./mcp-client-config.example.json) for standard MCP client configuration.
@@ -63,3 +65,51 @@ Capability lifecycle operations are exposed via the authenticated control plane 
 
 See [`docs/V0.3_CAPABILITIES.md`](../docs/V0.3_CAPABILITIES.md) for full endpoint specifications.
 
+## Universal MCP Integration (Standard Clients)
+
+AgentFirewall supports standard MCP-capable agents (GitHub Copilot in VS Code, Claude Desktop, Cursor, etc.) via the standard MCP JSON-RPC over HTTP protocol without requiring external agents to manage internal IntentGuard capabilities or custom headers manually.
+
+### Flow Architecture
+
+```
+External Agent (GitHub Copilot / Claude)
+→ Standard MCP JSON-RPC (HTTP)
+→ AgentFirewall Universal MCP Bridge
+→ Client Authentication (Bearer / API-Key)
+→ Auto-Resolve / Provision Agent Session & Task
+→ Cryptographically Mint Task Capability Token
+→ McpGatewayService (8 Pipeline Gates Enforced)
+    1. Session & Quarantine Check
+    2. Capability Token Validation
+    3. Tool Manifest Check
+    4. Provenance Resolution
+    5. AI Security Agent & Policy Evaluation
+    6. Approval Gate & Replay Prevention
+    7. Fail-Closed Audit Trail Persistence
+    8. Protected Tool Execution
+→ Return Standard MCP Response
+```
+
+### Standard Client Configuration (VS Code / Copilot)
+
+Add to your VS Code MCP configuration (`.vscode/mcp.json` or Copilot MCP settings):
+
+```json
+{
+  "mcpServers": {
+    "agentfirewall": {
+      "type": "http",
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer intentguard-mcp-client-secret-key"
+      }
+    }
+  }
+}
+```
+
+See [`copilot-mcp-config.example.json`](./copilot-mcp-config.example.json).
+
+### Backward Compatibility
+
+Clients providing internal headers (`Mcp-Session-Id`, `X-IntentGuard-Capability`, `X-IntentGuard-Approval`) continue to be supported directly without modification.

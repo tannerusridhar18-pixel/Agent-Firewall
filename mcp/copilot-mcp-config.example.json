@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "agentfirewall": {
+      "type": "http",
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer ${INTENTGUARD_MCP_API_KEY:intentguard-mcp-client-secret-key}"
+      }
+    }
+  }
+}

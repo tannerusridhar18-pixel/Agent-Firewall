@@ -51,6 +51,21 @@ public class ApprovalRepository {
         }
     }
 
+    public Optional<Approval> findLatestApproved(String sessionId, String toolName, String argumentsHash) {
+        try {
+            Approval a = jdbc.queryForObject("""
+                SELECT approval_id, request_id, session_id, task_id, tool_name,
+                       arguments_hash, status, approver_id, created_at, expires_at, consumed_at
+                FROM approvals
+                WHERE session_id = ? AND tool_name = ? AND arguments_hash = ? AND status = 'APPROVED' AND expires_at > ?
+                ORDER BY created_at DESC LIMIT 1
+                """, (r, n) -> map(r), sessionId, toolName, argumentsHash, Timestamp.from(Instant.now()));
+            return Optional.ofNullable(a);
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
+    }
+
     public boolean updateStatus(String requestId, String status, String approverId) {
         int rows = jdbc.update("""
             UPDATE approvals

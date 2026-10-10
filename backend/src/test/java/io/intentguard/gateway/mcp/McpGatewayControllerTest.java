@@ -54,7 +54,7 @@ class McpGatewayControllerTest {
         when(tasks.find("T-1")).thenReturn(task());
         when(activity.append(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(new io.intentguard.gateway.model.ActivityEvent("E-1", "S-1", "T-1", "TOOL_CALL", "MCP_GATEWAY",
-                        "read_file", "workspace/src/Auth.java", "ALLOW", "TOOL", "ALLOW", Instant.now()));
+                        "read_file", "workspace/src/Auth.java", "ALLOW", "TOOL", "ALLOW", "LOW", "EXECUTED", Instant.now()));
 
         var gateway = new McpGatewayService(sessions, tasks, activity, registry, new DefaultPolicyEngine(), capabilities, List.of(protectedTool));
         mvc = MockMvcBuilders.standaloneSetup(new McpGatewayController(gateway, registry)).build();

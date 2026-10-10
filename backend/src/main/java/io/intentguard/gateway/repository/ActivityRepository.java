@@ -20,17 +20,28 @@ public class ActivityRepository {
     }
 
     public ActivityEvent append(String sessionId, String taskId, String tool, String target, String decision, String classification, String reason) {
-        return append(sessionId, taskId, tool, target, decision, classification, reason, "SIMULATOR");
+        return append(sessionId, taskId, tool, target, decision, classification, reason, "SIMULATOR", "UNKNOWN", "RECORDED");
     }
 
     public ActivityEvent append(String sessionId, String taskId, String tool, String target, String decision, String classification, String reason, String source) {
+        return append(sessionId, taskId, tool, target, decision, classification, reason, source, "UNKNOWN", "RECORDED");
+    }
+
+    public ActivityEvent append(String sessionId, String taskId, String tool, String target, String decision,
+                                String classification, String reason, String source, String riskLevel,
+                                String executionStatus) {
         String id = "E-" + UUID.randomUUID();
         Instant now = Instant.now();
         jdbc.update(
-                "INSERT INTO activity_events(event_id, session_id, task_id, activity_type, source, tool, target, decision, classification, reason, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                id, sessionId, taskId, "TOOL_CALL", source, tool, target == null ? "" : target, decision, classification, reason, Timestamp.from(now)
+                "INSERT INTO activity_events(event_id, session_id, task_id, activity_type, source, tool, target, decision, classification, reason, risk_level, execution_status, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                id, sessionId, taskId, "TOOL_CALL", source, tool, target == null ? "" : target, decision, classification, reason,
+                riskLevel, executionStatus, Timestamp.from(now)
         );
         return find(id);
+    }
+
+    public void updateExecutionStatus(String eventId, String executionStatus) {
+        jdbc.update("UPDATE activity_events SET execution_status=? WHERE event_id=?", executionStatus, eventId);
     }
 
     public ActivityEvent find(String id) {
@@ -57,6 +68,8 @@ public class ActivityRepository {
                 r.getString("decision"),
                 r.getString("classification"),
                 r.getString("reason"),
+                r.getString("risk_level"),
+                r.getString("execution_status"),
                 r.getTimestamp("occurred_at").toInstant()
         );
     }
